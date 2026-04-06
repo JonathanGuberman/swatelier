@@ -23,7 +23,7 @@ export function setBackgroundColor(hex: string) {
 
 export function initScene(container: HTMLElement) {
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1a2e);
+  scene.background = new THREE.Color(0xd4d4d8);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -111,16 +111,21 @@ export function updatePreviewMesh(triangles: Triangle[]) {
   currentMesh = new THREE.Mesh(geometry, currentMaterial);
   scene.add(currentMesh);
 
-  // Fit camera to the object
+  // Focus camera on the head (upper portion of the flyswatter)
   geometry.computeBoundingBox();
   const box = geometry.boundingBox!;
-  const center = new THREE.Vector3();
-  box.getCenter(center);
-  controls.target.copy(center);
+  // The head is roughly the top ~55mm of the model (Y axis)
+  const headCenter = new THREE.Vector3(
+    (box.min.x + box.max.x) / 2,
+    box.max.y - 27,  // center of head region
+    0
+  );
+  controls.target.copy(headCenter);
 
-  const size = new THREE.Vector3();
-  box.getSize(size);
-  const maxDim = Math.max(size.x, size.y, size.z);
-  camera.position.set(center.x, center.y, center.z + maxDim * 1.5);
+  // Zoom in to fill the viewport with the head (~50mm tall)
+  const headSize = 55;
+  const vFov = camera.fov * (Math.PI / 180);
+  const dist = (headSize / 2) / Math.tan(vFov / 2) * 1.1;
+  camera.position.set(headCenter.x, headCenter.y, headCenter.z + dist);
   controls.update();
 }

@@ -9,7 +9,7 @@ import { Triangle } from './vec';
 
 // State
 let currentFile: File | null = null;
-let currentCrop: CropResult = { offsetX: 0, offsetY: 0, scale: 1 };
+let currentCrop: CropResult = { offsetX: 0, offsetY: 0, scale: 1, density: 32 };
 let stlBuffer: ArrayBuffer | null = null;
 
 // DOM elements
@@ -58,6 +58,7 @@ container.addEventListener('drop', (e) => {
 // Sliders
 densitySlider.addEventListener('input', () => {
   densityValue.textContent = densitySlider.value;
+  currentCrop.density = parseInt(densitySlider.value);
   regenerate();
 });
 thicknessSlider.addEventListener('input', () => {
@@ -76,12 +77,12 @@ bgColorInput.addEventListener('input', () => {
   setBackgroundColor(bgColorInput.value);
 });
 
-// Click thumbnail to re-crop
+// Click thumbnail to re-crop (passes current crop state)
 imagePreview.addEventListener('click', async () => {
   if (!currentFile) return;
-  const result = await openCropModal(currentFile);
+  const result = await openCropModal(currentFile, currentCrop);
   if (result) {
-    currentCrop = result;
+    applyCropResult(result);
     await regenerate();
   }
 });
@@ -93,18 +94,26 @@ downloadBtn.addEventListener('click', () => {
   }
 });
 
+function applyCropResult(result: CropResult) {
+  currentCrop = result;
+  // Sync density slider with crop modal value
+  densitySlider.value = String(result.density);
+  densityValue.textContent = String(result.density);
+}
+
 async function handleFile(file: File) {
   currentFile = file;
   imagePreview.src = URL.createObjectURL(file);
   imagePreview.style.display = 'block';
   placeholder.style.display = 'none';
 
-  // Open crop modal immediately on first upload
-  const result = await openCropModal(file);
+  // Open crop modal with current density
+  const initialCrop: CropResult = { offsetX: 0, offsetY: 0, scale: 1, density: currentCrop.density };
+  const result = await openCropModal(file, initialCrop);
   if (result) {
-    currentCrop = result;
+    applyCropResult(result);
   } else {
-    currentCrop = { offsetX: 0, offsetY: 0, scale: 1 };
+    currentCrop = { ...initialCrop };
   }
   await regenerate();
 }
@@ -115,7 +124,7 @@ async function regenerate() {
   if (!currentFile || generating) return;
   generating = true;
 
-  const density = parseInt(densitySlider.value);
+  const density = currentCrop.density;
   const thickness = parseFloat(thicknessSlider.value);
   const invert = invertCheckbox.checked;
 
@@ -134,7 +143,7 @@ async function regenerate() {
     );
 
     const headTriangles = generateHeadMesh(outline, perforations, thickness);
-    const handleTriangles = generateHandleMesh(outline);
+    const handleTriangles = generateHandleMesh(outline, thickness);
     const allTriangles: Triangle[] = [...headTriangles, ...handleTriangles];
 
     status.textContent = 'Rendering preview...';

@@ -8,7 +8,7 @@ export function writeBinaryStl(triangles: Triangle[]): ArrayBuffer {
   const view = new DataView(buffer);
 
   // Header: write a descriptive string
-  const header = 'Flyswatter STL - Generated in browser';
+  const header = 'Swatelier STL - Generated in browser';
   for (let i = 0; i < header.length && i < 80; i++) {
     view.setUint8(i, header.charCodeAt(i));
   }
