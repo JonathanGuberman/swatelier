@@ -39,6 +39,7 @@ export function openCropModal(imageFile: File): Promise<CropResult | null> {
   return new Promise((resolve) => {
     resolvePromise = resolve;
     cropState = { ...DEFAULT_CROP };
+    targetScale = DEFAULT_CROP.scale;
 
     const imgEl = new Image();
     imgEl.onload = () => {
@@ -108,6 +109,7 @@ function showModal() {
   });
   modalEl.querySelector('#crop-reset')!.addEventListener('click', () => {
     cropState = { ...DEFAULT_CROP };
+    targetScale = DEFAULT_CROP.scale;
     drawCrop();
   });
   modalEl.querySelector('.crop-modal-backdrop')!.addEventListener('click', () => {
@@ -117,6 +119,10 @@ function showModal() {
 }
 
 function closeModal() {
+  if (zoomAnimFrame) {
+    cancelAnimationFrame(zoomAnimFrame);
+    zoomAnimFrame = 0;
+  }
   modalEl?.remove();
   modalEl = null;
 }
@@ -145,12 +151,34 @@ function onMouseUp() {
   canvas.style.cursor = 'grab';
 }
 
-function onWheel(e: WheelEvent) {
-  e.preventDefault();
-  const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-  cropState.scale = Math.max(0.1, Math.min(5, cropState.scale * zoomFactor));
+// Smooth zoom state
+let targetScale = 1;
+let zoomAnimFrame = 0;
+const ZOOM_LERP = 0.12; // interpolation speed per frame
+
+function animateZoom() {
+  const diff = targetScale - cropState.scale;
+  if (Math.abs(diff) < 0.001) {
+    cropState.scale = targetScale;
+    clampOffset();
+    drawCrop();
+    zoomAnimFrame = 0;
+    return;
+  }
+  cropState.scale += diff * ZOOM_LERP;
   clampOffset();
   drawCrop();
+  zoomAnimFrame = requestAnimationFrame(animateZoom);
+}
+
+function onWheel(e: WheelEvent) {
+  e.preventDefault();
+  // Gentler zoom factor: ~3% per scroll tick instead of 10%
+  const zoomFactor = e.deltaY > 0 ? 0.97 : 1.03;
+  targetScale = Math.max(0.1, Math.min(5, targetScale * zoomFactor));
+  if (!zoomAnimFrame) {
+    zoomAnimFrame = requestAnimationFrame(animateZoom);
+  }
 }
 
 let lastTouchDist = 0;

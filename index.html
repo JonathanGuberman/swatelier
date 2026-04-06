@@ -54,7 +54,10 @@
       border-radius: 4px;
       border: 2px solid #0f3460;
       display: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
     }
+    #image-preview:hover { border-color: #e94560; }
     .slider-group {
       display: flex;
       align-items: center;
@@ -82,23 +85,6 @@
     }
     .slider-group input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
     .slider-group input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
-    .crop-action-btn {
-      background: #0f3460;
-      color: #e0e0e0;
-      border: 1px solid #1a5276;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      opacity: 0.5;
-      pointer-events: none;
-    }
-    .crop-action-btn.active {
-      opacity: 1;
-      pointer-events: auto;
-      background: #1a5276;
-    }
-    .crop-action-btn.active:hover { background: #1f6f8b; }
     #download-btn {
       background: #0f3460;
       color: #e0e0e0;
@@ -189,7 +175,6 @@
         <label for="bg-color">Background</label>
         <input type="color" id="bg-color" value="#1a1a2e" />
       </div>
-      <button id="crop-btn" class="crop-action-btn">Crop</button>
       <button id="download-btn">Download STL</button>
       <span id="status">Upload an image to begin</span>
     </div>

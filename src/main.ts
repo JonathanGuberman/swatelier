@@ -22,7 +22,6 @@ const thicknessValue = document.getElementById('thickness-value') as HTMLSpanEle
 const invertCheckbox = document.getElementById('invert-checkbox') as HTMLInputElement;
 const meshColorInput = document.getElementById('mesh-color') as HTMLInputElement;
 const bgColorInput = document.getElementById('bg-color') as HTMLInputElement;
-const cropBtn = document.getElementById('crop-btn') as HTMLButtonElement;
 const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement;
 const status = document.getElementById('status') as HTMLSpanElement;
 const container = document.getElementById('canvas-container') as HTMLDivElement;
@@ -77,8 +76,8 @@ bgColorInput.addEventListener('input', () => {
   setBackgroundColor(bgColorInput.value);
 });
 
-// Crop button
-cropBtn.addEventListener('click', async () => {
+// Click thumbnail to re-crop
+imagePreview.addEventListener('click', async () => {
   if (!currentFile) return;
   const result = await openCropModal(currentFile);
   if (result) {
@@ -99,7 +98,6 @@ async function handleFile(file: File) {
   imagePreview.src = URL.createObjectURL(file);
   imagePreview.style.display = 'block';
   placeholder.style.display = 'none';
-  cropBtn.classList.add('active');
 
   // Open crop modal immediately on first upload
   const result = await openCropModal(file);
