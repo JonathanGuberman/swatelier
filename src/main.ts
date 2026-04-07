@@ -27,6 +27,9 @@ const status = document.getElementById('status') as HTMLSpanElement;
 const container = document.getElementById('canvas-container') as HTMLDivElement;
 const placeholder = document.getElementById('placeholder') as HTMLDivElement;
 const dropOverlay = document.getElementById('drop-overlay') as HTMLDivElement;
+const infoBtn = document.getElementById('info-btn') as HTMLButtonElement;
+const infoPopup = document.getElementById('info-popup') as HTMLDivElement;
+const infoClose = document.getElementById('info-close') as HTMLButtonElement;
 
 // Dimension controls
 const dimToggle = document.getElementById('dim-toggle') as HTMLButtonElement;
@@ -109,9 +112,21 @@ dimToggle.addEventListener('click', () => {
   dimPanel.classList.toggle('open');
 });
 document.addEventListener('click', (e) => {
-  if (!dimPanel.contains(e.target as Node) && e.target !== dimToggle) {
+  const t = e.target as Node;
+  if (!dimPanel.contains(t) && t !== dimToggle) {
     dimPanel.classList.remove('open');
   }
+  if (!infoPopup.contains(t) && t !== infoBtn) {
+    infoPopup.classList.remove('open');
+  }
+});
+
+// Info popup
+infoBtn.addEventListener('click', () => {
+  infoPopup.classList.toggle('open');
+});
+infoClose.addEventListener('click', () => {
+  infoPopup.classList.remove('open');
 });
 
 // Dimension sliders
