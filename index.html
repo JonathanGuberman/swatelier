@@ -180,6 +180,105 @@
     }
     .placeholder svg { opacity: 0.3; }
     .placeholder p { font-size: 16px; }
+
+    /* Info button & popup */
+    .info-btn {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(22, 33, 62, 0.85);
+      border: 1px solid #0f3460;
+      color: #a0a0b0;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      transition: background 0.15s, color 0.15s;
+      line-height: 1;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-style: italic;
+    }
+    .info-btn:hover { background: #1a5276; color: #e0e0e0; }
+    .info-popup {
+      display: none;
+      position: absolute;
+      bottom: 60px;
+      right: 16px;
+      width: 380px;
+      max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+      background: #1e1e3a;
+      border: 1px solid #0f3460;
+      border-radius: 10px;
+      padding: 20px;
+      z-index: 200;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+      font-size: 14px;
+      line-height: 1.6;
+      color: #ccc;
+    }
+    .info-popup.open { display: block; }
+    .info-popup h3 {
+      font-size: 16px;
+      color: #e94560;
+      margin: 16px 0 6px;
+      font-weight: 600;
+    }
+    .info-popup h3:first-child { margin-top: 0; }
+    .info-popup p { margin: 4px 0; }
+    .info-popup a {
+      color: #5eaef7;
+      text-decoration: none;
+    }
+    .info-popup a:hover { text-decoration: underline; }
+    .info-popup ul {
+      margin: 4px 0 4px 18px;
+      padding: 0;
+    }
+    .info-popup li { margin: 2px 0; }
+    .info-popup .info-close {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+    .info-popup .info-close:hover { color: #e0e0e0; }
+    .info-popup .info-footer {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #2a2a4a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .info-popup .gh-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .info-popup .gh-link svg { fill: #ccc; }
+    .info-popup .gh-link:hover svg { fill: #5eaef7; }
+    .info-popup kbd {
+      background: #2a2a4a;
+      border: 1px solid #444;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 12px;
+      font-family: inherit;
+    }
   </style>
 </head>
 <body>
@@ -254,6 +353,43 @@
       <p>Upload an image or drag &amp; drop</p>
     </div>
     <div class="drop-overlay" id="drop-overlay">Drop image here</div>
+    <button class="info-btn" id="info-btn" title="About Swatelier">i</button>
+    <div class="info-popup" id="info-popup">
+      <button class="info-close" id="info-close">&times;</button>
+      <h3>About Swatelier</h3>
+      <p>
+        Swatelier generates 3D-printable flyswatter STL files with halftone image perforations.
+        The design is inspired by Philippe Starck's
+        <a href="https://www.starck.com/dr-skud-p2093" target="_blank" rel="noopener">Dr. Skud</a>
+        flyswatter, produced by
+        <a href="https://alessi.com/products/dr-skud-fly-swatter" target="_blank" rel="noopener">Alessi</a>.
+      </p>
+      <p>
+        Created by <a href="https://jonathanguberman.com" target="_blank" rel="noopener">Jonathan Guberman</a>
+        using <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>.
+      </p>
+      <h3>How to Use</h3>
+      <ul>
+        <li><strong>Upload</strong> an image using the button or drag &amp; drop onto the viewport.</li>
+        <li><strong>Crop</strong> by clicking the image thumbnail. Drag to pan, scroll to zoom.</li>
+        <li>Adjust <strong>Density</strong> to control perforation detail and <strong>Invert</strong> to flip light/dark.</li>
+        <li>Open the <strong>Dimensions</strong> panel to adjust thickness, head size, handle length, and more.</li>
+        <li>Pick <strong>Mesh</strong> and <strong>Background</strong> colours to preview different looks.</li>
+        <li>Click <strong>Download STL</strong> to save the file for your slicer.</li>
+      </ul>
+      <h3>3D Viewport Controls</h3>
+      <ul>
+        <li><strong>Rotate</strong> &mdash; click and drag</li>
+        <li><strong>Pan</strong> &mdash; right-click drag, or <kbd>Ctrl</kbd>/<kbd>&#8984;</kbd> + drag</li>
+        <li><strong>Zoom</strong> &mdash; scroll wheel (zooms toward cursor)</li>
+      </ul>
+      <div class="info-footer">
+        <a class="gh-link" href="https://github.com/JonathanGuberman/swatelier" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
