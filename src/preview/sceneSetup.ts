@@ -8,6 +8,7 @@ let camera: THREE.PerspectiveCamera;
 let controls: OrbitControls;
 let currentMesh: THREE.Mesh | null = null;
 let currentMaterial: THREE.MeshStandardMaterial | null = null;
+let hasFramedCamera = false;
 
 export function setMeshColor(hex: string) {
   if (currentMaterial) {
@@ -34,15 +35,48 @@ export function initScene(container: HTMLElement) {
     45,
     container.clientWidth / container.clientHeight,
     0.1,
-    2000
+    5000
   );
   camera.position.set(0, -100, 200);
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.1;
+  controls.enableZoom = false; // we handle zoom ourselves
   controls.target.set(0, -100, 0);
   controls.update();
+
+  // Zoom toward mouse position
+  renderer.domElement.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = renderer.domElement.getBoundingClientRect();
+    const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+    // Cast a ray from the mouse into the scene to find the world point under cursor
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+
+    // Use the plane at the current target depth as fallback
+    const targetPlane = new THREE.Plane();
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+    targetPlane.setFromNormalAndCoplanarPoint(camDir, controls.target);
+
+    const worldPoint = new THREE.Vector3();
+    raycaster.ray.intersectPlane(targetPlane, worldPoint);
+    if (!worldPoint) return;
+
+    const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+
+    // Move camera and target toward/away from the point under cursor
+    const camToPoint = worldPoint.clone().sub(camera.position);
+    const targetToPoint = worldPoint.clone().sub(controls.target);
+
+    camera.position.add(camToPoint.clone().multiplyScalar(1 - zoomFactor));
+    controls.target.add(targetToPoint.clone().multiplyScalar(1 - zoomFactor));
+    controls.update();
+  }, { passive: false });
 
   // Lights
   const ambient = new THREE.AmbientLight(0xffffff, 0.5);
@@ -76,12 +110,7 @@ export function initScene(container: HTMLElement) {
 }
 
 export function updatePreviewMesh(triangles: Triangle[]) {
-  if (currentMesh) {
-    scene.remove(currentMesh);
-    currentMesh.geometry.dispose();
-    (currentMesh.material as THREE.Material).dispose();
-  }
-
+  // Build new geometry and mesh FIRST, before touching the scene
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(triangles.length * 9);
   const normals = new Float32Array(triangles.length * 9);
@@ -101,31 +130,42 @@ export function updatePreviewMesh(triangles: Triangle[]) {
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
 
+  // Preserve color from previous material if it exists
+  const prevColor = currentMaterial ? currentMaterial.color.getHex() : 0x2a2a2a;
+
   currentMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2a2a2a,
+    color: prevColor,
     metalness: 0.3,
     roughness: 0.6,
     side: THREE.DoubleSide,
   });
 
-  currentMesh = new THREE.Mesh(geometry, currentMaterial);
-  scene.add(currentMesh);
+  const newMesh = new THREE.Mesh(geometry, currentMaterial);
 
-  // Focus camera on the head (upper portion of the flyswatter)
-  geometry.computeBoundingBox();
-  const box = geometry.boundingBox!;
-  // The head is roughly the top ~55mm of the model (Y axis)
-  const headCenter = new THREE.Vector3(
-    (box.min.x + box.max.x) / 2,
-    box.max.y - 27,  // center of head region
-    0
-  );
-  controls.target.copy(headCenter);
+  // Atomic swap: add new mesh, then remove old — no empty frames
+  scene.add(newMesh);
+  if (currentMesh) {
+    scene.remove(currentMesh);
+    currentMesh.geometry.dispose();
+    (currentMesh.material as THREE.Material).dispose();
+  }
+  currentMesh = newMesh;
 
-  // Zoom in to fill the viewport with the head (~50mm tall)
-  const headSize = 55;
-  const vFov = camera.fov * (Math.PI / 180);
-  const dist = (headSize / 2) / Math.tan(vFov / 2) * 1.1;
-  camera.position.set(headCenter.x, headCenter.y, headCenter.z + dist);
-  controls.update();
+  // Only auto-frame camera on first render to avoid jumps during parameter tweaks
+  if (!hasFramedCamera) {
+    hasFramedCamera = true;
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox!;
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    controls.target.copy(center);
+
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const vFov = camera.fov * (Math.PI / 180);
+    const dist = (maxDim / 2) / Math.tan(vFov / 2) * 1.2;
+    camera.position.set(center.x, center.y, center.z + dist);
+    controls.update();
+  }
 }
