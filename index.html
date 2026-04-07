@@ -120,6 +120,15 @@
     .dimensions-panel .slider-group label { min-width: 90px; }
     .dimensions-panel .slider-group input[type="range"] { width: 80px; accent-color: #e94560; }
     .dimensions-panel .slider-group .value { width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+    .dimensions-panel select {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
     .dim-anchor { position: relative; }
     #download-btn {
       background: #0f3460;
@@ -329,6 +338,14 @@
             <label for="leg-length-slider">Leg Length</label>
             <input type="range" id="leg-length-slider" min="10" max="40" step="1" value="30" />
             <span class="value" id="leg-length-value">30</span><span>mm</span>
+          </div>
+          <div class="slider-group">
+            <label for="split-mode">Split Handle</label>
+            <select id="split-mode">
+              <option value="none">None</option>
+              <option value="press-fit">Press Fit</option>
+              <option value="screw">Screw Thread</option>
+            </select>
           </div>
         </div>
       </div>

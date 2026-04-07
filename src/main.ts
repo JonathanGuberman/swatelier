@@ -1,7 +1,7 @@
 import { generateHeadOutline, HeadParams } from './geometry/headOutline';
 import { generatePerforations } from './geometry/perforationGrid';
 import { generateHeadMesh } from './geometry/headMesh';
-import { generateHandleMesh, HandleParams } from './geometry/handleMesh';
+import { generateHandleMesh, HandleParams, SplitMode } from './geometry/handleMesh';
 import { writeBinaryStl, downloadStl } from './stl/binaryStlWriter';
 import { initScene, updatePreviewMesh, setMeshColor, setBackgroundColor } from './preview/sceneSetup';
 import { openCropModal, processImageWithCrop, CropResult } from './cropModal';
@@ -44,6 +44,7 @@ const handleDiamSlider = document.getElementById('handle-diam-slider') as HTMLIn
 const handleDiamValue = document.getElementById('handle-diam-value') as HTMLSpanElement;
 const legLengthSlider = document.getElementById('leg-length-slider') as HTMLInputElement;
 const legLengthValue = document.getElementById('leg-length-value') as HTMLSpanElement;
+const splitModeSelect = document.getElementById('split-mode') as HTMLSelectElement;
 
 // Random vibrant mesh color on each load
 function randomVibrantColor(): string {
@@ -143,6 +144,9 @@ for (const { slider, display } of dimSliders) {
     debouncedRegenerate();
   });
 }
+splitModeSelect.addEventListener('change', () => {
+  debouncedRegenerate();
+});
 
 function currentHeadParams(): HeadParams {
   return {
@@ -227,6 +231,7 @@ async function regenerate() {
       handleLength: parseFloat(handleLengthSlider.value),
       handleRadius: headParams.handleRadius,
       legLength: parseFloat(legLengthSlider.value),
+      splitMode: splitModeSelect.value as SplitMode,
     };
 
     const outline = generateHeadOutline(headParams);
