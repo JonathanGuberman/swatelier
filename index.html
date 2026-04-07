@@ -85,6 +85,42 @@
     }
     .slider-group input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
     .slider-group input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+    .dimensions-toggle {
+      background: #0f3460;
+      color: #a0a0b0;
+      border: 1px solid #1a5276;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .dimensions-toggle:hover { background: #1a5276; color: #e0e0e0; }
+    .dimensions-panel {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 12px 16px;
+      z-index: 100;
+      min-width: 220px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .dimensions-panel.open { display: flex; flex-direction: column; gap: 8px; }
+    .dimensions-panel .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #a0a0b0;
+    }
+    .dimensions-panel .slider-group label { min-width: 90px; }
+    .dimensions-panel .slider-group input[type="range"] { width: 80px; accent-color: #e94560; }
+    .dimensions-panel .slider-group .value { width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+    .dim-anchor { position: relative; }
     #download-btn {
       background: #0f3460;
       color: #e0e0e0;
@@ -159,13 +195,43 @@
         <span class="value" id="density-value">32</span>
       </div>
       <div class="slider-group">
-        <label for="thickness-slider">Thickness</label>
-        <input type="range" id="thickness-slider" min="0.8" max="3.0" step="0.1" value="1.5" />
-        <span class="value" id="thickness-value">1.5</span>
-      </div>
-      <div class="slider-group">
         <label for="invert-checkbox">Invert</label>
         <input type="checkbox" id="invert-checkbox" />
+      </div>
+      <div class="dim-anchor">
+        <button class="dimensions-toggle" id="dim-toggle">Dimensions ▾</button>
+        <div class="dimensions-panel" id="dim-panel">
+          <div class="slider-group">
+            <label for="thickness-slider">Thickness</label>
+            <input type="range" id="thickness-slider" min="0.8" max="3.0" step="0.1" value="1.5" />
+            <span class="value" id="thickness-value">1.5</span><span>mm</span>
+          </div>
+          <div class="slider-group">
+            <label for="head-width-slider">Head Width</label>
+            <input type="range" id="head-width-slider" min="60" max="140" step="1" value="95" />
+            <span class="value" id="head-width-value">95</span><span>mm</span>
+          </div>
+          <div class="slider-group">
+            <label for="head-height-slider">Head Height</label>
+            <input type="range" id="head-height-slider" min="80" max="180" step="1" value="119" />
+            <span class="value" id="head-height-value">119</span><span>mm</span>
+          </div>
+          <div class="slider-group">
+            <label for="handle-length-slider">Handle Length</label>
+            <input type="range" id="handle-length-slider" min="100" max="500" step="5" value="300" />
+            <span class="value" id="handle-length-value">300</span><span>mm</span>
+          </div>
+          <div class="slider-group">
+            <label for="handle-diam-slider">Handle Diameter</label>
+            <input type="range" id="handle-diam-slider" min="3" max="10" step="0.5" value="6" />
+            <span class="value" id="handle-diam-value">6</span><span>mm</span>
+          </div>
+          <div class="slider-group">
+            <label for="leg-length-slider">Leg Length</label>
+            <input type="range" id="leg-length-slider" min="10" max="40" step="1" value="30" />
+            <span class="value" id="leg-length-value">30</span><span>mm</span>
+          </div>
+        </div>
       </div>
       <div class="slider-group">
         <label for="mesh-color">Mesh</label>

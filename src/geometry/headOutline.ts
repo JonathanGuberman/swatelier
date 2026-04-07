@@ -1,27 +1,26 @@
 import { Vec2 } from '../vec';
 
-// Handle radius must match handleMesh.ts
-export const HANDLE_RADIUS = 3.0;
+// Base profile in normalized coordinates.
+// Half-width = 47.5, height from Y=95 to Y=-24 = 119.
+// The bottom point tapers to handle radius (scaled separately).
+const BASE_HALF_WIDTH = 47.5;
+const BASE_HEIGHT = 119; // from top (95) to bottom (-24)
+const BASE_TOP_Y = 95;
 
-// Dr. Skud-inspired head shape: shield/goblet outline
-// Coordinates in mm, origin at center of head, Y+ is up
-// Right half profile — will be mirrored for left side.
-// Head dimensions: ~95mm wide (half-width 47.5), height = 125% of width ≈ 119mm
-// Profile runs from top (Y=~95) down to bottom (Y=~-24) = ~119mm tall
-const RIGHT_PROFILE: Vec2[] = [
-  [0, 95],               // top center
-  [18, 95],              // top, starting to curve
-  [36, 93],              // top shoulder
-  [44, 86],              // upper right
-  [47.5, 74],            // widest point
-  [46, 60],              // beginning to taper
-  [41, 44],              // mid taper
-  [33, 26],              // lower taper
-  [23, 8],               // narrowing
-  [15, -8],              // continued taper
-  [10, -16],             // approaching handle width
-  [6, -21],              // nearly handle width
-  [HANDLE_RADIUS, -24],  // matches handle diameter
+const BASE_RIGHT_PROFILE: Vec2[] = [
+  [0, 95],
+  [18, 95],
+  [36, 93],
+  [44, 86],
+  [47.5, 74],
+  [46, 60],
+  [41, 44],
+  [33, 26],
+  [23, 8],
+  [15, -8],
+  [10, -16],
+  [6, -21],
+  [3, -24],   // placeholder — will be replaced with actual handleRadius
 ];
 
 // Catmull-Rom spline interpolation for smooth curves
@@ -45,7 +44,6 @@ function catmullRom(
 function interpolateSpline(points: Vec2[], numSamples: number): Vec2[] {
   const result: Vec2[] = [];
   const n = points.length;
-  // Total number of segments between control points
   const segments = n - 1;
   const samplesPerSegment = Math.max(2, Math.ceil(numSamples / segments));
 
@@ -55,10 +53,9 @@ function interpolateSpline(points: Vec2[], numSamples: number): Vec2[] {
     const p2 = points[Math.min(n - 1, seg + 1)];
     const p3 = points[Math.min(n - 1, seg + 2)];
 
-    const steps = seg === segments - 1 ? samplesPerSegment : samplesPerSegment;
-    for (let i = 0; i < steps; i++) {
-      if (seg > 0 && i === 0) continue; // avoid duplicate at segment boundary
-      const t = i / (steps - 1);
+    for (let i = 0; i < samplesPerSegment; i++) {
+      if (seg > 0 && i === 0) continue;
+      const t = i / (samplesPerSegment - 1);
       result.push(catmullRom(p0, p1, p2, p3, t));
     }
   }
@@ -71,17 +68,43 @@ export interface HeadOutline {
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
 }
 
-export function generateHeadOutline(samples: number = 120): HeadOutline {
-  const rightSide = interpolateSpline(RIGHT_PROFILE, samples);
+export interface HeadParams {
+  headWidth: number;   // mm, full width
+  headHeight: number;  // mm, full height
+  handleRadius: number; // mm
+}
 
-  // Mirror for left side (bottom to top on left)
+export const DEFAULT_HEAD_PARAMS: HeadParams = {
+  headWidth: 95,
+  headHeight: 119,
+  handleRadius: 3,
+};
+
+export function generateHeadOutline(
+  params: HeadParams = DEFAULT_HEAD_PARAMS,
+  samples: number = 120
+): HeadOutline {
+  const scaleX = (params.headWidth / 2) / BASE_HALF_WIDTH;
+  const scaleY = params.headHeight / BASE_HEIGHT;
+
+  // Scale the base profile and replace the bottom point with actual handle radius
+  const profile: Vec2[] = BASE_RIGHT_PROFILE.map(([x, y], i) => {
+    if (i === BASE_RIGHT_PROFILE.length - 1) {
+      // Bottom point: use handle radius for X, scale Y
+      return [params.handleRadius, BASE_TOP_Y - params.headHeight + (BASE_TOP_Y - y) * 0] as Vec2;
+    }
+    return [x * scaleX, BASE_TOP_Y + (y - BASE_TOP_Y) * scaleY] as Vec2;
+  });
+  // Fix bottom point Y: place it at top - height
+  profile[profile.length - 1] = [params.handleRadius, BASE_TOP_Y - params.headHeight];
+
+  const rightSide = interpolateSpline(profile, samples);
+
   const leftSide = rightSide
     .slice()
     .reverse()
     .map(([x, y]) => [-x, y] as Vec2);
 
-  // Combine: right side top-to-bottom, then left side bottom-to-top
-  // Remove duplicates at the join points (top center x=0 and bottom center x≈HANDLE_RADIUS mirrored)
   const points = [...rightSide, ...leftSide.slice(0, -1)];
 
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;

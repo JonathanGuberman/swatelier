@@ -1,8 +1,20 @@
 import { Triangle, Vec3, makeTriangle } from '../vec';
-import { HeadOutline, HANDLE_RADIUS } from './headOutline';
+import { HeadOutline } from './headOutline';
 
 const SEGMENTS = 24;
 const LOFT_RINGS = 14;
+
+export interface HandleParams {
+  handleLength: number;  // mm
+  handleRadius: number;  // mm
+  legLength: number;     // mm
+}
+
+export const DEFAULT_HANDLE_PARAMS: HandleParams = {
+  handleLength: 300,
+  handleRadius: 3,
+  legLength: 30,
+};
 
 // Superellipse point: |x/a|^n + |z/b|^n = 1
 // n=2 → ellipse/circle, n→∞ → rectangle
@@ -14,17 +26,21 @@ function superellipsePoint(
   const s = Math.sin(angle);
   const ca = Math.abs(c);
   const sa = Math.abs(s);
-  // Avoid division by zero at axes
   const e = 2 / exponent;
   const x = Math.sign(c) * halfW * Math.pow(ca, e);
   const z = Math.sign(s) * halfH * Math.pow(sa, e);
   return [x, z];
 }
 
-export function generateHandleMesh(outline: HeadOutline, thickness: number): Triangle[] {
+export function generateHandleMesh(
+  outline: HeadOutline,
+  thickness: number,
+  handleParams: HandleParams = DEFAULT_HANDLE_PARAMS
+): Triangle[] {
   const triangles: Triangle[] = [];
   const headBottom = outline.bounds.minY;
   const halfThick = thickness / 2;
+  const { handleLength, handleRadius, legLength } = handleParams;
 
   // Loft from head plate cross-section to circular handle.
   // Start slightly inside the head plate for seamless overlap.
@@ -33,9 +49,6 @@ export function generateHandleMesh(outline: HeadOutline, thickness: number): Tri
   const loftTop = headBottom + loftOverlap;
   const loftBottom = loftTop - loftLength;
 
-  // Superellipse exponent: high value ≈ rectangle at top, 2 = circle at bottom.
-  // Using 8 gives a near-rectangle with subtly rounded corners (looks better
-  // than sharp corners and matches the plate edge well).
   const topExponent = 8;
   const bottomExponent = 2;
 
@@ -45,14 +58,13 @@ export function generateHandleMesh(outline: HeadOutline, thickness: number): Tri
     const y = loftTop - t * loftLength;
     const smooth = t * t * (3 - 2 * t); // smoothstep
 
-    // Interpolate cross-section parameters
-    const halfH = halfThick + (HANDLE_RADIUS - halfThick) * smooth;
+    const halfH = halfThick + (handleRadius - halfThick) * smooth;
     const exp = topExponent + (bottomExponent - topExponent) * smooth;
 
     const ring: Vec3[] = [];
     for (let i = 0; i < SEGMENTS; i++) {
       const angle = (2 * Math.PI * i) / SEGMENTS;
-      const [x, z] = superellipsePoint(angle, HANDLE_RADIUS, halfH, exp);
+      const [x, z] = superellipsePoint(angle, handleRadius, halfH, exp);
       ring.push([x, y, z]);
     }
     rings.push(ring);
@@ -70,14 +82,12 @@ export function generateHandleMesh(outline: HeadOutline, thickness: number): Tri
   }
 
   // Handle: cylinder from loft bottom down to tripod junction
-  const handleLength = 300;
   const handleTop: Vec3 = [0, loftBottom, 0];
   const handleBottom: Vec3 = [0, loftBottom - handleLength, 0];
-  triangles.push(...generateCylinder(handleTop, handleBottom, HANDLE_RADIUS, SEGMENTS));
+  triangles.push(...generateCylinder(handleTop, handleBottom, handleRadius, SEGMENTS));
 
   // Tripod base
   const tripodY = loftBottom - handleLength;
-  const legLength = 20;
   const legAngleFromVertical = Math.PI / 5;
   const legRadius = 2.0;
 

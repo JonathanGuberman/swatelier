@@ -1,4 +1,4 @@
-import { generateHeadOutline } from './geometry/headOutline';
+import { generateHeadOutline, HeadParams, DEFAULT_HEAD_PARAMS } from './geometry/headOutline';
 import { generatePerforations, Perforation } from './geometry/perforationGrid';
 
 export interface CropResult {
@@ -26,25 +26,34 @@ let dragStartY = 0;
 let dragStartOffX = 0;
 let dragStartOffY = 0;
 
-// Head outline normalized to [0,1] range for the mask
-const outline = generateHeadOutline(80);
-const { bounds } = outline;
-const outlineWidth = bounds.maxX - bounds.minX;
-const outlineHeight = bounds.maxY - bounds.minY;
+// Head outline — regenerated each time the modal opens with current head params
+let outline = generateHeadOutline(DEFAULT_HEAD_PARAMS, 80);
+let outlineBounds = outline.bounds;
+let outlineWidth = outlineBounds.maxX - outlineBounds.minX;
+let outlineHeight = outlineBounds.maxY - outlineBounds.minY;
+
+function updateOutline(headParams: HeadParams) {
+  outline = generateHeadOutline(headParams, 80);
+  outlineBounds = outline.bounds;
+  outlineWidth = outlineBounds.maxX - outlineBounds.minX;
+  outlineHeight = outlineBounds.maxY - outlineBounds.minY;
+}
 
 function normalizedOutlinePoints(): { x: number; y: number }[] {
   return outline.points.map(([ox, oy]) => ({
-    x: (ox - bounds.minX) / outlineWidth,
-    y: 1 - (oy - bounds.minY) / outlineHeight,
+    x: (ox - outlineBounds.minX) / outlineWidth,
+    y: 1 - (oy - outlineBounds.minY) / outlineHeight,
   }));
 }
 
 export function openCropModal(
   imageFile: File,
-  initialCrop?: CropResult
+  initialCrop?: CropResult,
+  headParams?: HeadParams
 ): Promise<CropResult | null> {
   return new Promise((resolve) => {
     resolvePromise = resolve;
+    if (headParams) updateOutline(headParams);
     cropState = initialCrop ? { ...initialCrop } : { ...DEFAULT_CROP };
     targetScale = cropState.scale;
 
@@ -112,15 +121,28 @@ function showModal() {
   previewCanvas = modalEl.querySelector('#preview-canvas') as HTMLCanvasElement;
   previewCtx = previewCanvas.getContext('2d')!;
 
-  // Size canvases
-  const maxPanelW = Math.floor((window.innerWidth - 120) / 2);
-  const maxPanelH = window.innerHeight - 220;
+  // Size canvases — single column on narrow screens
+  const isMobile = window.innerWidth < 640;
   const aspect = outlineHeight / outlineWidth;
-  let panelW = Math.min(maxPanelW, 480);
-  let panelH = Math.round(panelW * aspect);
-  if (panelH > maxPanelH) {
-    panelH = maxPanelH;
-    panelW = Math.round(panelH / aspect);
+  let panelW: number, panelH: number;
+
+  if (isMobile) {
+    panelW = Math.min(window.innerWidth - 48, 400);
+    panelH = Math.round(panelW * aspect);
+    const maxH = Math.floor((window.innerHeight - 240) / 2);
+    if (panelH > maxH) {
+      panelH = maxH;
+      panelW = Math.round(panelH / aspect);
+    }
+  } else {
+    const maxPanelW = Math.floor((window.innerWidth - 120) / 2);
+    const maxPanelH = window.innerHeight - 220;
+    panelW = Math.min(maxPanelW, 480);
+    panelH = Math.round(panelW * aspect);
+    if (panelH > maxPanelH) {
+      panelH = maxPanelH;
+      panelW = Math.round(panelH / aspect);
+    }
   }
 
   cropCanvas.width = panelW;
@@ -287,9 +309,38 @@ function onTouchEnd() {
 }
 
 function clampOffset() {
-  const margin = 0.3 / cropState.scale;
-  cropState.offsetX = Math.max(-margin, Math.min(1 - 1 / cropState.scale + margin, cropState.offsetX));
-  cropState.offsetY = Math.max(-margin, Math.min(1 - 1 / cropState.scale + margin, cropState.offsetY));
+  // Compute how much panning range exists on each axis based on the
+  // actual drawn image size vs the canvas size.
+  // drawPos = -offset * drawSize + (canvas - drawSize) / 2
+  // We want: the image can be dragged so that its far edge just reaches
+  // the near edge of the canvas (and vice-versa).
+  // i.e. drawPos ranges from  (canvas - drawSize)  to  0
+  //   => offset ranges from  (1 - canvas/drawSize)/2  to  (canvas/drawSize - 1)/2 + (1 - 1/scale... )
+  // Simplify: offset = (canvas/2 - drawPos) / drawSize - 0.5 + 0.5 ...
+  // Easier: just compute the ratio directly.
+  if (!img) return;
+  const cw = cropCanvas.width;
+  const ch = cropCanvas.height;
+  const imgAspect = img.width / img.height;
+  const canvasAspect = cw / ch;
+  let drawW: number, drawH: number;
+  if (imgAspect > canvasAspect) {
+    drawH = ch * cropState.scale;
+    drawW = drawH * imgAspect;
+  } else {
+    drawW = cw * cropState.scale;
+    drawH = drawW / imgAspect;
+  }
+
+  // drawX = -offsetX * drawW + (cw - drawW) / 2
+  // For image left edge at canvas left:  drawX = 0  => offsetX = (cw - drawW) / (2 * drawW)
+  // For image right edge at canvas right: drawX = cw - drawW => offsetX = -(cw - drawW) / (2 * drawW)
+  // When drawW > cw, (cw - drawW) is negative, so min < 0 < max.
+  const rangeX = Math.abs(cw - drawW) / (2 * drawW);
+  const rangeY = Math.abs(ch - drawH) / (2 * drawH);
+
+  cropState.offsetX = Math.max(-rangeX, Math.min(rangeX, cropState.offsetX));
+  cropState.offsetY = Math.max(-rangeY, Math.min(rangeY, cropState.offsetY));
 }
 
 function computeImageTransform(targetW: number, targetH: number) {
@@ -383,8 +434,8 @@ function drawPreview() {
   // Cut out the perforation holes
   offCtx.globalCompositeOperation = 'destination-out';
   for (const perf of perforations) {
-    const px = ((perf.cx - bounds.minX) / outlineWidth) * w;
-    const py = (1 - (perf.cy - bounds.minY) / outlineHeight) * h;
+    const px = ((perf.cx - outlineBounds.minX) / outlineWidth) * w;
+    const py = (1 - (perf.cy - outlineBounds.minY) / outlineHeight) * h;
     const pr = (perf.radius / outlineWidth) * w;
     offCtx.beginPath();
     offCtx.arc(px, py, pr, 0, Math.PI * 2);
@@ -505,6 +556,10 @@ style.textContent = `
   max-height: 95vh;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+}
+@media (max-width: 639px) {
+  .crop-modal-content { padding: 12px; }
 }
 .crop-modal-header {
   display: flex;
@@ -524,6 +579,9 @@ style.textContent = `
 .crop-panels {
   display: flex;
   gap: 16px;
+}
+@media (max-width: 639px) {
+  .crop-panels { flex-direction: column; gap: 10px; }
 }
 .crop-panel {
   display: flex;
@@ -553,6 +611,7 @@ style.textContent = `
   align-items: center;
   gap: 12px;
   margin-top: 12px;
+  flex-wrap: wrap;
 }
 .crop-density-group {
   display: flex;
@@ -564,6 +623,12 @@ style.textContent = `
 .crop-density-group input[type="range"] {
   width: 100px;
   accent-color: #e94560;
+}
+@media (max-width: 639px) {
+  .crop-density-group input[type="range"] { width: 60px; }
+  .crop-spacer { display: none; }
+  .crop-modal-footer { gap: 8px; }
+  .crop-btn { padding: 8px 14px; font-size: 13px; }
 }
 .crop-density-group span {
   width: 24px;
