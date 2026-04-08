@@ -234,6 +234,23 @@
       color: #ccc;
     }
     .info-popup.open { display: block; }
+    @media (max-width: 639px), (max-height: 500px) {
+      .info-popup {
+        position: fixed;
+        inset: 0;
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        border: none;
+        padding: 16px;
+        padding-top: 48px;
+        z-index: 300;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
     .info-popup h3 {
       font-size: 16px;
       color: #e94560;
@@ -265,6 +282,18 @@
       padding: 4px;
     }
     .info-popup .info-close:hover { color: #e0e0e0; }
+    @media (max-width: 639px), (max-height: 500px) {
+      .info-popup .info-close {
+        top: 8px;
+        right: 8px;
+        font-size: 28px;
+        padding: 8px 12px;
+      }
+      .info-popup li { margin: 6px 0; line-height: 1.7; }
+      .info-popup a { padding: 4px 0; display: inline-block; }
+      .info-popup .info-footer { padding-top: 16px; }
+      .info-popup .gh-link { padding: 8px 0; }
+    }
     .info-popup .info-footer {
       margin-top: 16px;
       padding-top: 12px;
